@@ -1,0 +1,1444 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบสารสนเทศรายชื่อโรงพยาบาลอัปเดต - Hospital Directory</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Prompt -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Prompt', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#f0fdfa',
+                            100: '#ccfbf1',
+                            500: '#14b8a6',
+                            600: '#0d9488',
+                            700: '#0f766e',
+                            800: '#115e59',
+                            900: '#134e4a',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            font-family: 'Prompt', sans-serif;
+            background-color: #f8fafc;
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.97);
+            backdrop-filter: blur(10px);
+        }
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 9999px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+        @media print {
+            header, nav, #toolbar-section, .no-print, #provinces-grid, footer {
+                display: none !important;
+            }
+            body {
+                background: white;
+                color: black;
+            }
+            #report-card {
+                border: 1px solid #ccc !important;
+                box-shadow: none !important;
+                display: block !important;
+            }
+        }
+    </style>
+</head>
+<body class="min-h-screen text-slate-800 flex flex-col justify-between antialiased selection:bg-teal-500 selection:text-white">
+
+    <!-- Toast Notification -->
+    <div id="toast" class="fixed bottom-6 right-6 z-50 transform translate-y-20 opacity-0 transition-all duration-300 ease-out flex items-center gap-3 bg-slate-900 text-white px-5 py-3 rounded-2xl shadow-2xl text-sm font-medium">
+        <i id="toast-icon" class="fa-solid fa-circle-check text-emerald-400 text-lg"></i>
+        <span id="toast-message">คัดลอกข้อมูลสำเร็จ!</span>
+    </div>
+
+    <!-- Top Navigation / Header -->
+    <header class="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-slate-200/80 shadow-xs">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5">
+            <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                <div class="flex items-center gap-3.5">
+                    <div class="w-11 h-11 rounded-2xl bg-gradient-to-tr from-teal-600 to-emerald-400 flex items-center justify-center text-white shadow-md shadow-teal-500/20 shrink-0">
+                        <i class="fa-solid fa-hospital text-xl"></i>
+                    </div>
+                    <div>
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <h1 class="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">ระบบสารสนเทศรายชื่อโรงพยาบาลอัปเดต</h1>
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1.5 animate-pulse"></span> ข้อมูลล่าสุด
+                            </span>
+                        </div>
+                        <p class="text-xs sm:text-sm text-slate-500">ระบบติดตามและตรวจสอบสถานะโรงพยาบาลรายจังหวัด</p>
+                    </div>
+                </div>
+
+                <!-- Action Header Toolbar -->
+                <div class="flex items-center gap-2 flex-wrap">
+                    <button onclick="openAddHospitalModal()" class="inline-flex items-center gap-2 px-3.5 py-2 text-xs sm:text-sm font-semibold text-white bg-teal-600 hover:bg-teal-700 active:scale-95 rounded-xl shadow-sm transition-all">
+                        <i class="fa-solid fa-hospital-user text-xs"></i>
+                        <span>+ เพิ่มโรงพยาบาล</span>
+                    </button>
+                    <button onclick="openAddProvinceModal()" class="inline-flex items-center gap-2 px-3.5 py-2 text-xs sm:text-sm font-semibold text-slate-700 bg-white hover:bg-slate-50 border border-slate-300 rounded-xl shadow-2xs transition-all">
+                        <i class="fa-solid fa-map-location-dot text-teal-600 text-xs"></i>
+                        <span>+ เพิ่มจังหวัด</span>
+                    </button>
+                    <button onclick="scrollToReport()" class="inline-flex items-center gap-1.5 px-3 py-2 text-xs sm:text-sm font-medium text-teal-700 bg-teal-50 hover:bg-teal-100 rounded-xl border border-teal-200 transition-colors">
+                        <i class="fa-solid fa-chart-pie text-xs"></i>
+                        <span>รายงานสรุป</span>
+                    </button>
+                    <button onclick="confirmResetData()" title="คืนค่าข้อมูลเป็นแบบเริ่มต้น" class="inline-flex items-center gap-1.5 px-3 py-2 text-xs sm:text-sm font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors border border-slate-200">
+                        <i class="fa-solid fa-rotate-left text-slate-500 text-xs"></i>
+                        <span class="hidden sm:inline">คืนค่าเดิม</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full space-y-8">
+
+        <!-- Stat Overview Cards -->
+        <section class="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+            <div class="glass-card p-5 rounded-2xl border border-slate-200/90 shadow-xs hover:shadow-md transition-shadow">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-xs sm:text-sm font-medium text-slate-500">จังหวัดทั้งหมด</p>
+                        <p id="stat-provinces" class="text-2xl sm:text-3xl font-bold text-slate-900 mt-1">0</p>
+                    </div>
+                    <div class="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center text-xl">
+                        <i class="fa-solid fa-map-location-dot"></i>
+                    </div>
+                </div>
+            </div>
+
+            <div class="glass-card p-5 rounded-2xl border border-slate-200/90 shadow-xs hover:shadow-md transition-shadow">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-xs sm:text-sm font-medium text-slate-500">โรงพยาบาลรวม</p>
+                        <p id="stat-hospitals" class="text-2xl sm:text-3xl font-bold text-teal-600 mt-1">0</p>
+                    </div>
+                    <div class="w-12 h-12 rounded-xl bg-teal-50 text-teal-600 flex items-center justify-center text-xl">
+                        <i class="fa-solid fa-house-medical"></i>
+                    </div>
+                </div>
+            </div>
+
+            <div class="glass-card p-5 rounded-2xl border border-slate-200/90 shadow-xs hover:shadow-md transition-shadow">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-xs sm:text-sm font-medium text-slate-500">ยืนยันแล้ว</p>
+                        <p id="stat-okay" class="text-2xl sm:text-3xl font-bold text-emerald-600 mt-1">0</p>
+                    </div>
+                    <div class="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-xl">
+                        <i class="fa-solid fa-circle-check"></i>
+                    </div>
+                </div>
+            </div>
+
+            <div class="glass-card p-5 rounded-2xl border border-slate-200/90 shadow-xs hover:shadow-md transition-shadow">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-xs sm:text-sm font-medium text-slate-500">มีเบอร์โทรติดต่อ</p>
+                        <p id="stat-contacts" class="text-2xl sm:text-3xl font-bold text-amber-600 mt-1">0</p>
+                    </div>
+                    <div class="w-12 h-12 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center text-xl">
+                        <i class="fa-solid fa-phone-volume"></i>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Search & Filter Controls -->
+        <section id="toolbar-section" class="glass-card p-4 sm:p-5 rounded-2xl border border-slate-200/90 shadow-xs">
+            <div class="flex flex-col md:flex-row gap-4 items-stretch md:items-center justify-between">
+                <!-- Search Input -->
+                <div class="relative flex-1">
+                    <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                        <i class="fa-solid fa-magnifying-glass"></i>
+                    </div>
+                    <input 
+                        type="text" 
+                        id="search-input" 
+                        placeholder="ค้นหาชื่อโรงพยาบาล, จังหวัด, ชื่อผู้ติดต่อ หรือเบอร์โทรศัพท์..." 
+                        class="w-full pl-10 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all placeholder:text-slate-400"
+                        oninput="handleSearch()"
+                    >
+                    <button id="clear-search-btn" onclick="clearSearch()" class="hidden absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-600">
+                        <i class="fa-solid fa-circle-xmark"></i>
+                    </button>
+                </div>
+
+                <!-- Status Filters -->
+                <div class="flex flex-wrap items-center gap-1.5 sm:gap-2">
+                    <button onclick="setFilter('all')" id="filter-all" class="filter-btn active px-3.5 py-2 rounded-xl text-xs sm:text-sm font-medium bg-teal-600 text-white shadow-2xs transition-all">
+                        ทั้งหมด
+                    </button>
+                    <button onclick="setFilter('okay')" id="filter-okay" class="filter-btn px-3.5 py-2 rounded-xl text-xs sm:text-sm font-medium bg-slate-100 text-slate-700 hover:bg-slate-200 transition-all">
+                        <i class="fa-solid fa-circle-check text-emerald-500 mr-1"></i> ยืนยันแล้ว
+                    </button>
+                    <button onclick="setFilter('contact')" id="filter-contact" class="filter-btn px-3.5 py-2 rounded-xl text-xs sm:text-sm font-medium bg-slate-100 text-slate-700 hover:bg-slate-200 transition-all">
+                        <i class="fa-solid fa-phone text-amber-500 mr-1"></i> มีเบอร์โทร
+                    </button>
+                    <button onclick="setFilter('pending')" id="filter-pending" class="filter-btn px-3.5 py-2 rounded-xl text-xs sm:text-sm font-medium bg-slate-100 text-slate-700 hover:bg-slate-200 transition-all">
+                        <i class="fa-regular fa-clock text-slate-400 mr-1"></i> รอดำเนินการ
+                    </button>
+                </div>
+            </div>
+            
+            <div class="mt-3 pt-3 border-t border-slate-100 text-xs text-slate-500 flex justify-between items-center">
+                <span>แสดงผลลัพธ์: <strong id="visible-count" class="text-teal-700">0</strong> โรงพยาบาล ใน <strong id="visible-provinces" class="text-teal-700">0</strong> จังหวัด</span>
+                <span id="filter-status-label" class="text-slate-400">ตัวกรอง: ทั้งหมด</span>
+            </div>
+        </section>
+
+        <!-- Executive Summary Presentation Box -->
+        <section id="report-card" class="glass-card rounded-2xl border border-teal-200/90 bg-gradient-to-br from-teal-50/40 via-white to-emerald-50/30 p-6 sm:p-7 shadow-sm">
+            <div class="flex flex-col md:flex-row md:items-center justify-between pb-4 border-b border-teal-100 gap-3">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-teal-600 text-white flex items-center justify-center text-lg shadow-sm">
+                        <i class="fa-solid fa-file-contract"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-lg sm:text-xl font-bold text-slate-900">สรุปรายงานเสนอความคืบหน้า</h2>
+                        <p class="text-xs text-slate-500">ข้อมูลสรุปภาพรวมเพื่อการนำเสนอผู้บริหารและการประชุมติดตามงาน</p>
+                    </div>
+                </div>
+                <!-- Report Action Buttons -->
+                <div class="flex items-center gap-2 no-print">
+                    <button onclick="copyExecutiveSummary()" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-white text-slate-700 border border-slate-200 hover:bg-slate-50 shadow-2xs transition-colors">
+                        <i class="fa-regular fa-copy text-teal-600"></i>
+                        <span>คัดลอกสรุป</span>
+                    </button>
+                    <button onclick="copyAllText()" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-white text-slate-700 border border-slate-200 hover:bg-slate-50 shadow-2xs transition-colors">
+                        <i class="fa-solid fa-list-check text-slate-600"></i>
+                        <span>คัดลอกรายชื่อทั้งหมด</span>
+                    </button>
+                    <button onclick="window.print()" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-teal-600 text-white hover:bg-teal-700 shadow-2xs transition-colors">
+                        <i class="fa-solid fa-print"></i>
+                        <span>พิมพ์รายงาน (PDF)</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Progress Meter -->
+            <div class="my-5">
+                <div class="flex justify-between items-center text-xs font-semibold mb-1.5">
+                    <span class="text-slate-700">อัตราความพร้อมของโรงพยาบาลในเครือข่าย</span>
+                    <span id="report-percent" class="text-teal-700 font-bold text-sm">0%</span>
+                </div>
+                <div class="w-full bg-slate-200/80 rounded-full h-3 overflow-hidden p-0.5">
+                    <div id="report-progress-bar" class="bg-gradient-to-r from-teal-500 to-emerald-400 h-full rounded-full transition-all duration-500" style="width: 0%"></div>
+                </div>
+            </div>
+
+            <!-- Executive Summary Content -->
+            <div id="executive-summary-content" class="bg-white/80 rounded-xl p-4 border border-slate-200 text-xs sm:text-sm text-slate-700 leading-relaxed space-y-3">
+                <!-- Loaded dynamically -->
+            </div>
+        </section>
+
+        <!-- Hospital Cards Grid -->
+        <section id="provinces-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <!-- Dynamic provinces and hospitals rendered here -->
+        </section>
+
+        <!-- Empty State -->
+        <div id="no-results" class="hidden text-center py-16">
+            <div class="w-16 h-16 mx-auto mb-4 rounded-2xl bg-slate-100 text-slate-400 flex items-center justify-center text-2xl">
+                <i class="fa-regular fa-folder-open"></i>
+            </div>
+            <h3 class="text-lg font-semibold text-slate-700 mb-1">ไม่พบข้อมูลที่ตรงกับเงื่อนไขการค้นหา</h3>
+            <p class="text-sm text-slate-500 max-w-sm mx-auto">โปรดลองเปลี่ยนคำค้นหา หรือรีเซ็ตตัวกรองเพื่อดูรายการทั้งหมด</p>
+            <div class="mt-4 flex items-center justify-center gap-3">
+                <button onclick="resetAllFilters()" class="px-4 py-2 text-sm font-medium text-teal-700 bg-teal-50 hover:bg-teal-100 rounded-xl transition-colors">
+                    รีเซ็ตการค้นหา
+                </button>
+                <button onclick="openAddHospitalModal()" class="px-4 py-2 text-sm font-medium text-white bg-teal-600 hover:bg-teal-700 rounded-xl transition-colors shadow-2xs">
+                    + เพิ่มโรงพยาบาลใหม่
+                </button>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Modal: Edit Hospital -->
+    <div id="edit-hospital-modal" class="fixed inset-0 z-50 hidden overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+        <div class="bg-white w-full max-w-lg rounded-2xl shadow-2xl border border-slate-200 overflow-hidden transform transition-all">
+            <div class="px-6 py-4 bg-gradient-to-r from-teal-50 to-emerald-50/50 border-b border-slate-200 flex items-center justify-between">
+                <div class="flex items-center gap-2.5">
+                    <div class="w-9 h-9 rounded-xl bg-teal-600 text-white flex items-center justify-center text-sm shadow-xs">
+                        <i class="fa-solid fa-pen-to-square"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-slate-900 text-base">แก้ไขข้อมูลโรงพยาบาล</h3>
+                        <p id="edit-province-subtitle" class="text-xs text-slate-500">จังหวัด: -</p>
+                    </div>
+                </div>
+                <button type="button" onclick="closeEditHospitalModal()" class="w-8 h-8 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 flex items-center justify-center transition-colors">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <form id="edit-hospital-form" onsubmit="handleSaveEditHospital(event)" class="p-6 space-y-4">
+                <input type="hidden" id="edit-prov-id">
+                <input type="hidden" id="edit-hosp-id">
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">
+                        ชื่อโรงพยาบาล <span class="text-red-500">*</span>
+                    </label>
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                            <i class="fa-solid fa-hospital text-xs"></i>
+                        </div>
+                        <input 
+                            type="text" 
+                            id="edit-hosp-name" 
+                            required 
+                            class="w-full pl-9 pr-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all font-medium text-slate-800"
+                        >
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">ชื่อผู้ติดต่อ / ผู้ประสานงาน</label>
+                        <div class="relative">
+                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                                <i class="fa-solid fa-user text-xs"></i>
+                            </div>
+                            <input 
+                                type="text" 
+                                id="edit-contact-name" 
+                                placeholder="เช่น คุณอัญญารัตน"
+                                class="w-full pl-9 pr-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all text-slate-800"
+                            >
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">เบอร์โทรศัพท์</label>
+                        <div class="relative">
+                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                                <i class="fa-solid fa-phone text-xs"></i>
+                            </div>
+                            <input 
+                                type="text" 
+                                id="edit-contact-phone" 
+                                placeholder="เช่น 065 005 2626"
+                                class="w-full pl-9 pr-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all text-slate-800"
+                            >
+                        </div>
+                    </div>
+                </div>
+
+                <div class="pt-1">
+                    <label class="relative flex items-center gap-3 p-3 rounded-xl bg-slate-50 border border-slate-200 cursor-pointer hover:bg-slate-100/70 transition-colors">
+                        <input type="checkbox" id="edit-status-okay" class="w-4 h-4 text-emerald-600 rounded-md border-slate-300 focus:ring-emerald-500">
+                        <div class="flex-1">
+                            <div class="flex items-center gap-1.5 font-semibold text-sm text-slate-800">
+                                <i class="fa-solid fa-circle-check text-emerald-500"></i>
+                                <span>สถานะยืนยันความพร้อมเรียบร้อย</span>
+                            </div>
+                            <p class="text-xs text-slate-500">แสดงไอคอนเครื่องหมายถูกสีเขียวข้างชื่อโรงพยาบาล</p>
+                        </div>
+                    </label>
+                </div>
+
+                <div class="flex items-center justify-between gap-2.5 pt-3 border-t border-slate-100">
+                    <button 
+                        type="button" 
+                        onclick="handleDeleteCurrentHospital()" 
+                        class="px-3 py-2 text-xs font-medium text-rose-600 hover:text-rose-700 hover:bg-rose-50 rounded-xl transition-colors flex items-center gap-1.5">
+                        <i class="fa-regular fa-trash-can"></i>
+                        <span>ลบโรงพยาบาลนี้</span>
+                    </button>
+                    <div class="flex items-center gap-2">
+                        <button 
+                            type="button" 
+                            onclick="closeEditHospitalModal()" 
+                            class="px-4 py-2 text-xs sm:text-sm font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors">
+                            ยกเลิก
+                        </button>
+                        <button 
+                            type="submit" 
+                            class="px-5 py-2 text-xs sm:text-sm font-medium text-white bg-teal-600 hover:bg-teal-700 rounded-xl shadow-xs transition-all">
+                            <i class="fa-solid fa-floppy-disk mr-1.5"></i> บันทึกข้อมูล
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal: Add Hospital -->
+    <div id="add-hospital-modal" class="fixed inset-0 z-50 hidden overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+        <div class="bg-white w-full max-w-lg rounded-2xl shadow-2xl border border-slate-200 overflow-hidden transform transition-all">
+            <div class="px-6 py-4 bg-gradient-to-r from-teal-50 to-emerald-50/50 border-b border-slate-200 flex items-center justify-between">
+                <div class="flex items-center gap-2.5">
+                    <div class="w-9 h-9 rounded-xl bg-teal-600 text-white flex items-center justify-center text-sm shadow-xs">
+                        <i class="fa-solid fa-plus"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-slate-900 text-base">เพิ่มโรงพยาบาลใหม่</h3>
+                        <p class="text-xs text-slate-500">บันทึกข้อมูลโรงพยาบาลเข้าสู่ระบบ</p>
+                    </div>
+                </div>
+                <button type="button" onclick="closeAddHospitalModal()" class="w-8 h-8 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 flex items-center justify-center transition-colors">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <form id="add-hospital-form" onsubmit="handleSaveAddHospital(event)" class="p-6 space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">
+                        จังหวัด <span class="text-red-500">*</span>
+                    </label>
+                    <select 
+                        id="add-hosp-province-select" 
+                        required 
+                        class="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all font-medium text-slate-800">
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">
+                        ชื่อโรงพยาบาล <span class="text-red-500">*</span>
+                    </label>
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                            <i class="fa-solid fa-hospital text-xs"></i>
+                        </div>
+                        <input 
+                            type="text" 
+                            id="add-hosp-name" 
+                            required 
+                            placeholder="เช่น โรงพยาบาล..." 
+                            class="w-full pl-9 pr-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all font-medium text-slate-800"
+                        >
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">ชื่อผู้ติดต่อ / ผู้ประสานงาน</label>
+                        <div class="relative">
+                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                                <i class="fa-solid fa-user text-xs"></i>
+                            </div>
+                            <input 
+                                type="text" 
+                                id="add-contact-name" 
+                                placeholder="เช่น คุณสมศักดิ์"
+                                class="w-full pl-9 pr-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all text-slate-800"
+                            >
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">เบอร์โทรศัพท์</label>
+                        <div class="relative">
+                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                                <i class="fa-solid fa-phone text-xs"></i>
+                            </div>
+                            <input 
+                                type="text" 
+                                id="add-contact-phone" 
+                                placeholder="เช่น 081 234 5678"
+                                class="w-full pl-9 pr-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all text-slate-800"
+                            >
+                        </div>
+                    </div>
+                </div>
+
+                <div class="pt-1">
+                    <label class="relative flex items-center gap-3 p-3 rounded-xl bg-slate-50 border border-slate-200 cursor-pointer hover:bg-slate-100/70 transition-colors">
+                        <input type="checkbox" id="add-status-okay" class="w-4 h-4 text-emerald-600 rounded-md border-slate-300 focus:ring-emerald-500">
+                        <div class="flex-1">
+                            <div class="flex items-center gap-1.5 font-semibold text-sm text-slate-800">
+                                <i class="fa-solid fa-circle-check text-emerald-500"></i>
+                                <span>สถานะยืนยันความพร้อมเรียบร้อย</span>
+                            </div>
+                            <p class="text-xs text-slate-500">ทำเครื่องหมายหากโรงพยาบาลนี้ยืนยันความพร้อมแล้ว</p>
+                        </div>
+                    </label>
+                </div>
+
+                <div class="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-100">
+                    <button 
+                        type="button" 
+                        onclick="closeAddHospitalModal()" 
+                        class="px-4 py-2 text-xs sm:text-sm font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors">
+                        ยกเลิก
+                    </button>
+                    <button 
+                        type="submit" 
+                        class="px-5 py-2 text-xs sm:text-sm font-medium text-white bg-teal-600 hover:bg-teal-700 rounded-xl shadow-xs transition-all">
+                        <i class="fa-solid fa-plus mr-1.5"></i> เพิ่มโรงพยาบาล
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal: Add Province -->
+    <div id="add-province-modal" class="fixed inset-0 z-50 hidden overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+        <div class="bg-white w-full max-w-md rounded-2xl shadow-2xl border border-slate-200 overflow-hidden transform transition-all">
+            <div class="px-6 py-4 bg-gradient-to-r from-teal-50 to-emerald-50/50 border-b border-slate-200 flex items-center justify-between">
+                <div class="flex items-center gap-2.5">
+                    <div class="w-9 h-9 rounded-xl bg-teal-600 text-white flex items-center justify-center text-sm shadow-xs">
+                        <i class="fa-solid fa-map-location-dot"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-slate-900 text-base">เพิ่มจังหวัดใหม่</h3>
+                        <p class="text-xs text-slate-500">สร้างกลุ่มจังหวัดสำหรับบันทึกโรงพยาบาล</p>
+                    </div>
+                </div>
+                <button type="button" onclick="closeAddProvinceModal()" class="w-8 h-8 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 flex items-center justify-center transition-colors">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <form id="add-province-form" onsubmit="handleSaveAddProvince(event)" class="p-6 space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">
+                        ชื่อจังหวัด <span class="text-red-500">*</span>
+                    </label>
+                    <input 
+                        type="text" 
+                        id="new-province-name" 
+                        required 
+                        placeholder="เช่น ชลบุรี, อุบลราชธานี" 
+                        class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all font-medium text-slate-800"
+                    >
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">
+                        ภูมิภาค
+                    </label>
+                    <select 
+                        id="new-province-region" 
+                        class="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all text-slate-800">
+                        <option value="อีสาน">ภาคตะวันออกเฉียงเหนือ (อีสาน)</option>
+                        <option value="เหนือ">ภาคเหนือ</option>
+                        <option value="กลาง">ภาคกลาง</option>
+                        <option value="ใต้">ภาคใต้</option>
+                        <option value="ตะวันออก">ภาคตะวันออก</option>
+                        <option value="ตะวันตก">ภาคตะวันตก</option>
+                    </select>
+                </div>
+
+                <div class="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-100">
+                    <button 
+                        type="button" 
+                        onclick="closeAddProvinceModal()" 
+                        class="px-4 py-2 text-xs sm:text-sm font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors">
+                        ยกเลิก
+                    </button>
+                    <button 
+                        type="submit" 
+                        class="px-5 py-2 text-xs sm:text-sm font-medium text-white bg-teal-600 hover:bg-teal-700 rounded-xl shadow-xs transition-all">
+                        <i class="fa-solid fa-plus mr-1.5"></i> เพิ่มจังหวัด
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Confirm Modal -->
+    <div id="confirm-modal" class="fixed inset-0 z-50 hidden overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+        <div class="bg-white w-full max-w-sm rounded-2xl shadow-2xl border border-slate-200 p-6 text-center">
+            <div id="confirm-modal-icon" class="w-12 h-12 mx-auto mb-3 rounded-2xl bg-amber-100 text-amber-600 flex items-center justify-center text-xl">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+            </div>
+            <h4 id="confirm-modal-title" class="text-base font-bold text-slate-900 mb-1">ยืนยันการดำเนินการ</h4>
+            <p id="confirm-modal-desc" class="text-xs text-slate-500 mb-5 leading-relaxed">คุณต้องการดำเนินการนี้หรือไม่?</p>
+            <div class="flex items-center justify-center gap-2.5">
+                <button type="button" onclick="closeConfirmModal()" class="flex-1 px-4 py-2 text-xs sm:text-sm font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors">
+                    ยกเลิก
+                </button>
+                <button type="button" id="confirm-modal-action-btn" class="flex-1 px-4 py-2 text-xs sm:text-sm font-medium text-white bg-rose-600 hover:bg-rose-700 rounded-xl transition-colors shadow-2xs">
+                    ยืนยัน
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="mt-12 bg-white border-t border-slate-200 py-6 text-center text-xs text-slate-500">
+        <div class="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-3">
+            <div class="flex items-center gap-2">
+                <i class="fa-solid fa-notes-medical text-teal-600"></i>
+                <span class="font-medium text-slate-700">Hospital Directory & Verification System</span>
+            </div>
+            <div>
+                พร้อมสำหรับนำไปใช้บน <a href="https://pages.github.com/" target="_blank" class="text-teal-600 hover:underline font-medium">GitHub Pages</a>
+            </div>
+        </div>
+    </footer>
+
+    <!-- JavaScript Application Logic -->
+    <script>
+        // ข้อมูลตั้งต้นที่แปลงคำว่า รพ. เป็น "โรงพยาบาล" ทั้งหมดครบถ้วน 21 จังหวัด
+        const defaultHospitalDataset = [
+            {
+                id: "prov-1",
+                province: "นครพนม",
+                region: "อีสาน",
+                hospitals: [
+                    { id: "hosp-1-1", name: "โรงพยาบาลนาแก", okay: false, contacts: [] }
+                ]
+            },
+            {
+                id: "prov-2",
+                province: "ขอนแก่น",
+                region: "อีสาน",
+                hospitals: [
+                    { id: "hosp-2-1", name: "โรงพยาบาลเมืองพล", okay: true, contacts: [] },
+                    { id: "hosp-2-2", name: "โรงพยาบาลชุมแพ", okay: false, contacts: [{ phone: "0650052626", formatted: "065 005 2626", name: "คุณอัญญารัตน" }] }
+                ]
+            },
+            {
+                id: "prov-3",
+                province: "สุรินทร์",
+                region: "อีสาน",
+                hospitals: [
+                    { id: "hosp-3-1", name: "โรงพยาบาลสนม", okay: false, contacts: [{ phone: "0621906861", formatted: "062 190 6861", name: "คุณบอล" }] },
+                    { id: "hosp-3-2", name: "โรงพยาบาลสำโรงทาบ", okay: false, contacts: [{ phone: "0923536445", formatted: "092 353 6445", name: "คุณนา / คุณบอล" }] }
+                ]
+            },
+            {
+                id: "prov-4",
+                province: "ร้อยเอ็ด",
+                region: "อีสาน",
+                hospitals: [
+                    { id: "hosp-4-1", name: "โรงพยาบาลสุวรรณภูมิ", okay: false, contacts: [{ phone: "0925011475", formatted: "092 501 1475", name: "คุณมาตุภูมิ" }] }
+                ]
+            },
+            {
+                id: "prov-5",
+                province: "มหาสารคาม",
+                region: "อีสาน",
+                hospitals: [
+                    { id: "hosp-5-1", name: "โรงพยาบาลบรบือ", okay: false, contacts: [] },
+                    { id: "hosp-5-2", name: "โรงพยาบาลโกสุมพิสัย", okay: false, contacts: [{ phone: "0969429269", formatted: "096 942 9269", name: "" }] }
+                ]
+            },
+            {
+                id: "prov-6",
+                province: "บึงกาฬ",
+                region: "อีสาน",
+                hospitals: [
+                    { id: "hosp-6-1", name: "โรงพยาบาลบึงกาฬ", okay: false, contacts: [{ phone: "0802392228", formatted: "080 239 2228", name: "คุณแป้ง" }] }
+                ]
+            },
+            {
+                id: "prov-7",
+                province: "เชียงใหม่",
+                region: "เหนือ",
+                hospitals: [
+                    { id: "hosp-7-1", name: "โรงพยาบาลอมก๋อย", okay: false, contacts: [] },
+                    { id: "hosp-7-2", name: "โรงพยาบาลจอมทอง", okay: true, contacts: [] }
+                ]
+            },
+            {
+                id: "prov-8",
+                province: "ลำปาง",
+                region: "เหนือ",
+                hospitals: [
+                    { id: "hosp-8-1", name: "โรงพยาบาลแม่ทะ", okay: false, contacts: [] }
+                ]
+            },
+            {
+                id: "prov-9",
+                province: "กำแพงเพชร",
+                region: "กลาง",
+                hospitals: [
+                    { id: "hosp-9-1", name: "โรงพยาบาลโกสัมพีนคร", okay: true, contacts: [] },
+                    { id: "hosp-9-2", name: "โรงพยาบาลบึงสามัคคี", okay: true, contacts: [] },
+                    { id: "hosp-9-3", name: "โรงพยาบาลลานกระบือ", okay: true, contacts: [] }
+                ]
+            },
+            {
+                id: "prov-10",
+                province: "น่าน",
+                region: "เหนือ",
+                hospitals: [
+                    { id: "hosp-10-1", name: "โรงพยาบาลนาน้อย", okay: true, contacts: [] },
+                    { id: "hosp-10-2", name: "โรงพยาบาลแม่จริม", okay: true, contacts: [] },
+                    { id: "hosp-10-3", name: "โรงพยาบาลบ้านหลวง", okay: true, contacts: [] }
+                ]
+            },
+            {
+                id: "prov-11",
+                province: "พิจิตร",
+                region: "กลาง",
+                hospitals: [
+                    { id: "hosp-11-1", name: "โรงพยาบาลทับคล้อ", okay: true, contacts: [] }
+                ]
+            },
+            {
+                id: "prov-12",
+                province: "เชียงราย",
+                region: "เหนือ",
+                hospitals: [
+                    { id: "hosp-12-1", name: "โรงพยาบาลแม่สาย", okay: false, contacts: [] }
+                ]
+            },
+            {
+                id: "prov-13",
+                province: "เลย",
+                region: "อีสาน",
+                hospitals: [
+                    { id: "hosp-13-1", name: "โรงพยาบาลสมเด็จพระยุพราชด่านซ้าย", okay: false, contacts: [{ phone: "0813871490", formatted: "081 387 1490", name: "คุณรัศมีแข จันธุ" }] }
+                ]
+            },
+            {
+                id: "prov-14",
+                province: "นครราชสีมา",
+                region: "อีสาน",
+                hospitals: [
+                    { id: "hosp-14-1", name: "โรงพยาบาลแก้งสนามนาง", okay: false, contacts: [] }
+                ]
+            },
+            {
+                id: "prov-15",
+                province: "ภูเก็ต",
+                region: "ใต้",
+                hospitals: [
+                    { id: "hosp-15-1", name: "โรงพยาบาลฉลอง", okay: false, contacts: [] }
+                ]
+            },
+            {
+                id: "prov-16",
+                province: "ยะลา",
+                region: "ใต้",
+                hospitals: [
+                    { id: "hosp-16-1", name: "โรงพยาบาลเบตง", okay: false, contacts: [] }
+                ]
+            },
+            {
+                id: "prov-17",
+                province: "แพร่",
+                region: "เหนือ",
+                hospitals: [
+                    { id: "hosp-17-1", name: "โรงพยาบาลลอง", okay: true, contacts: [] },
+                    { id: "hosp-17-2", name: "โรงพยาบาลสมเด็จพระยุพราชเด่นชัย", okay: true, contacts: [] }
+                ]
+            },
+            {
+                id: "prov-18",
+                province: "ยโสธร",
+                region: "อีสาน",
+                hospitals: [
+                    { id: "hosp-18-1", name: "โรงพยาบาลเลิงนกทา", okay: true, contacts: [] }
+                ]
+            },
+            {
+                id: "prov-19",
+                province: "อ่างทอง",
+                region: "กลาง",
+                hospitals: [
+                    { id: "hosp-19-1", name: "โรงพยาบาลป่าโมก", okay: true, contacts: [] },
+                    { id: "hosp-19-2", name: "โรงพยาบาลไชโย", okay: false, contacts: [] },
+                    { id: "hosp-19-3", name: "โรงพยาบาลโพธิ์ทอง", okay: true, contacts: [] }
+                ]
+            },
+            {
+                id: "prov-20",
+                province: "นครสวรรค์",
+                region: "กลาง",
+                hospitals: [
+                    { id: "hosp-20-1", name: "โรงพยาบาลแม่วงก์", okay: true, contacts: [] }
+                ]
+            },
+            {
+                id: "prov-21",
+                province: "เพชรบุรี",
+                region: "ตะวันตก",
+                hospitals: [
+                    { id: "hosp-21-1", name: "โรงพยาบาลบ้านแหลม", okay: false, contacts: [{ phone: "0816298038", formatted: "081 629 8038", name: "คุณศร" }] }
+                ]
+            }
+        ];
+
+        // ระบบจัดเก็บข้อมูล LocalStorage
+        let hospitalDataset = [];
+        const STORAGE_KEY = 'hospital_management_store_v3';
+
+        function loadDataset() {
+            try {
+                const saved = localStorage.getItem(STORAGE_KEY);
+                if (saved) {
+                    hospitalDataset = JSON.parse(saved);
+                } else {
+                    hospitalDataset = JSON.parse(JSON.stringify(defaultHospitalDataset));
+                }
+            } catch (e) {
+                hospitalDataset = JSON.parse(JSON.stringify(defaultHospitalDataset));
+            }
+        }
+
+        function persistDataset() {
+            try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(hospitalDataset));
+            } catch (e) {
+                console.error("Save error:", e);
+            }
+        }
+
+        // จัดรูปแบบชื่อโรงพยาบาลให้ขึ้นต้นด้วยคำว่า "โรงพยาบาล" เสมอ
+        function formatHospitalName(rawName) {
+            let name = (rawName || '').trim();
+            if (name.startsWith("รพ.")) {
+                name = "โรงพยาบาล" + name.slice(3).trim();
+            } else if (!name.startsWith("โรงพยาบาล")) {
+                name = "โรงพยาบาล" + name;
+            }
+            return name;
+        }
+
+        // แจ้งเตือน Toast
+        function showToast(text, isError = false) {
+            const toast = document.getElementById('toast');
+            const msg = document.getElementById('toast-message');
+            const icon = document.getElementById('toast-icon');
+            
+            msg.textContent = text;
+            if (isError) {
+                icon.className = "fa-solid fa-circle-exclamation text-rose-400 text-lg";
+            } else {
+                icon.className = "fa-solid fa-circle-check text-emerald-400 text-lg";
+            }
+
+            toast.classList.remove('translate-y-20', 'opacity-0');
+            toast.classList.add('translate-y-0', 'opacity-100');
+            setTimeout(() => {
+                toast.classList.remove('translate-y-0', 'opacity-100');
+                toast.classList.add('translate-y-20', 'opacity-0');
+            }, 2500);
+        }
+
+        // คัดลอกคลิปบอร์ด
+        function copyToClipboard(text, alertMsg = "คัดลอกลงคลิปบอร์ดแล้ว") {
+            const textarea = document.createElement("textarea");
+            textarea.value = text;
+            textarea.style.position = "fixed";
+            textarea.style.opacity = "0";
+            document.body.appendChild(textarea);
+            textarea.select();
+            try {
+                document.execCommand("copy");
+                showToast(alertMsg);
+            } catch (err) {
+                console.error("Copy failed", err);
+            }
+            document.body.removeChild(textarea);
+        }
+
+        // คัดลอกข้อมูลทั้งหมด
+        function copyAllText() {
+            let result = "รายชื่อโรงพยาบาล อัปเดต\n____________________\n\n";
+            hospitalDataset.forEach(p => {
+                result += `${p.province}\n`;
+                p.hospitals.forEach(h => {
+                    let line = `- ${h.name}`;
+                    if (h.okay) line += " (okay)";
+                    if (h.contacts && h.contacts.length > 0) {
+                        const ct = h.contacts[0];
+                        line += ` (${ct.formatted || ct.phone}${ct.name ? ' ' + ct.name : ''})`;
+                    }
+                    result += `${line}\n`;
+                });
+                result += "\n";
+            });
+            copyToClipboard(result.trim(), "คัดลอกรายชื่อทั้งหมดสำเร็จ!");
+        }
+
+        function copyProvinceInfo(provId) {
+            const p = hospitalDataset.find(item => item.id === provId);
+            if (!p) return;
+
+            let text = `${p.province}\n`;
+            p.hospitals.forEach(h => {
+                let line = `- ${h.name}`;
+                if (h.okay) line += " (okay)";
+                if (h.contacts && h.contacts.length > 0) {
+                    const ct = h.contacts[0];
+                    line += ` (${ct.formatted || ct.phone}${ct.name ? ' ' + ct.name : ''})`;
+                }
+                text += `${line}\n`;
+            });
+            copyToClipboard(text.trim(), `คัดลอกข้อมูลจังหวัด ${p.province} สำเร็จ!`);
+        }
+
+        // คัดลอกข้อความสรุปผู้บริหาร
+        function copyExecutiveSummary() {
+            let totalHospitals = 0;
+            let okayCount = 0;
+            let contactCount = 0;
+
+            hospitalDataset.forEach(p => {
+                p.hospitals.forEach(h => {
+                    totalHospitals++;
+                    if (h.okay) okayCount++;
+                    if (h.contacts && h.contacts.length > 0) contactCount++;
+                });
+            });
+
+            const percent = totalHospitals > 0 ? Math.round((okayCount / totalHospitals) * 100) : 0;
+            let text = `[สรุปรายงานความคืบหน้าข้อมูลโรงพยาบาล]\n` +
+                       `• จำนวนจังหวัดทั้งหมด: ${hospitalDataset.length} จังหวัด\n` +
+                       `• จำนวนโรงพยาบาลรวม: ${totalHospitals} แห่ง\n` +
+                       `• ยืนยันความพร้อมแล้ว: ${okayCount} แห่ง (${percent}%)\n` +
+                       `• มีเบอร์ติดต่อประสานงาน: ${contactCount} แห่ง\n` +
+                       `• อยู่ระหว่างรอดำเนินการ: ${totalHospitals - okayCount} แห่ง\n`;
+
+            copyToClipboard(text, "คัดลอกข้อความสรุปสำหรับผู้บริหารสำเร็จ!");
+        }
+
+        function scrollToReport() {
+            document.getElementById('report-card').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        // คำนวณสถิติและกล่องรายงานเสนอผู้บริหาร
+        function updateSummaryStats() {
+            let totalHospitals = 0;
+            let okayCount = 0;
+            let contactsCount = 0;
+            let okayHospitalsList = [];
+            let pendingHospitalsList = [];
+
+            hospitalDataset.forEach(item => {
+                item.hospitals.forEach(h => {
+                    totalHospitals++;
+                    if (h.okay) {
+                        okayCount++;
+                        okayHospitalsList.push(`${h.name} (${item.province})`);
+                    } else {
+                        pendingHospitalsList.push(`${h.name} (${item.province})`);
+                    }
+                    if (h.contacts && h.contacts.length > 0) contactsCount++;
+                });
+            });
+
+            document.getElementById('stat-provinces').textContent = hospitalDataset.length;
+            document.getElementById('stat-hospitals').textContent = totalHospitals;
+            document.getElementById('stat-okay').textContent = okayCount;
+            document.getElementById('stat-contacts').textContent = contactsCount;
+
+            const percentage = totalHospitals > 0 ? Math.round((okayCount / totalHospitals) * 100) : 0;
+            document.getElementById('report-percent').textContent = `${percentage}% (${okayCount}/${totalHospitals} แห่ง)`;
+            document.getElementById('report-progress-bar').style.width = `${percentage}%`;
+
+            // รายงานสรุปเชิงพรรณนา
+            const summaryContainer = document.getElementById('executive-summary-content');
+            summaryContainer.innerHTML = `
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="bg-emerald-50/60 p-3.5 rounded-xl border border-emerald-200">
+                        <div class="flex items-center gap-2 font-semibold text-emerald-800 text-xs sm:text-sm mb-2">
+                            <i class="fa-solid fa-circle-check text-emerald-600"></i>
+                            <span>กลุ่มที่ยืนยันความพร้อมแล้ว (${okayCount} แห่ง)</span>
+                        </div>
+                        <p class="text-xs text-slate-600 mb-2">มีความพร้อมและได้รับการยืนยันสถานะแล้ว ได้แก่:</p>
+                        <div class="max-h-32 overflow-y-auto pr-1 text-xs text-slate-700 space-y-1">
+                            ${okayHospitalsList.length > 0 ? okayHospitalsList.map(item => `<div>• ${item}</div>`).join('') : '<span class="text-slate-400">ยังไม่มีรายการ</span>'}
+                        </div>
+                    </div>
+
+                    <div class="bg-amber-50/60 p-3.5 rounded-xl border border-amber-200">
+                        <div class="flex items-center gap-2 font-semibold text-amber-800 text-xs sm:text-sm mb-2">
+                            <i class="fa-regular fa-clock text-amber-600"></i>
+                            <span>กลุ่มที่อยู่ระหว่างดำเนินการ (${totalHospitals - okayCount} แห่ง)</span>
+                        </div>
+                        <p class="text-xs text-slate-600 mb-2">อยู่ระหว่างประสานงาน หรือรอการยืนยันข้อมูล:</p>
+                        <div class="max-h-32 overflow-y-auto pr-1 text-xs text-slate-700 space-y-1">
+                            ${pendingHospitalsList.length > 0 ? pendingHospitalsList.map(item => `<div>• ${item}</div>`).join('') : '<span class="text-slate-400">ครบถ้วนทุกแห่งแล้ว</span>'}
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // สถานะค้นหา & ตัวกรอง
+        let currentFilter = 'all';
+        let searchQuery = '';
+
+        function setFilter(filterType) {
+            currentFilter = filterType;
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                btn.classList.remove('bg-teal-600', 'text-white', 'shadow-2xs');
+                btn.classList.add('bg-slate-100', 'text-slate-700');
+            });
+
+            const activeBtn = document.getElementById(`filter-${filterType}`);
+            if (activeBtn) {
+                activeBtn.classList.remove('bg-slate-100', 'text-slate-700');
+                activeBtn.classList.add('bg-teal-600', 'text-white', 'shadow-2xs');
+            }
+
+            const labelMap = {
+                'all': 'ทั้งหมด',
+                'okay': 'เฉพาะที่ยืนยันแล้ว',
+                'contact': 'เฉพาะที่มีเบอร์โทรศัพท์',
+                'pending': 'เฉพาะที่รอดำเนินการ'
+            };
+            document.getElementById('filter-status-label').textContent = `ตัวกรอง: ${labelMap[filterType]}`;
+            renderCards();
+        }
+
+        function handleSearch() {
+            const input = document.getElementById('search-input');
+            searchQuery = input.value.trim().toLowerCase();
+            const clearBtn = document.getElementById('clear-search-btn');
+            if (searchQuery.length > 0) {
+                clearBtn.classList.remove('hidden');
+            } else {
+                clearBtn.classList.add('hidden');
+            }
+            renderCards();
+        }
+
+        function clearSearch() {
+            document.getElementById('search-input').value = '';
+            searchQuery = '';
+            document.getElementById('clear-search-btn').classList.add('hidden');
+            renderCards();
+        }
+
+        function resetAllFilters() {
+            clearSearch();
+            setFilter('all');
+        }
+
+        // กรองข้อมูล
+        function getFilteredData() {
+            let totalHospCount = 0;
+            let filteredProvinces = [];
+
+            hospitalDataset.forEach(item => {
+                const matchProvinceName = item.province.toLowerCase().includes(searchQuery);
+
+                const matchingHospitals = item.hospitals.filter(h => {
+                    let passFilter = true;
+                    if (currentFilter === 'okay') passFilter = h.okay;
+                    if (currentFilter === 'contact') passFilter = h.contacts && h.contacts.length > 0;
+                    if (currentFilter === 'pending') passFilter = !h.okay && (!h.contacts || h.contacts.length === 0);
+
+                    if (!passFilter) return false;
+
+                    if (!searchQuery) return true;
+                    if (matchProvinceName) return true;
+
+                    const matchHospName = h.name.toLowerCase().includes(searchQuery);
+                    const matchContact = h.contacts && h.contacts.some(c => 
+                        (c.name && c.name.toLowerCase().includes(searchQuery)) ||
+                        (c.phone && c.phone.includes(searchQuery)) ||
+                        (c.formatted && c.formatted.includes(searchQuery))
+                    );
+
+                    return matchHospName || matchContact;
+                });
+
+                if (matchingHospitals.length > 0) {
+                    totalHospCount += matchingHospitals.length;
+                    filteredProvinces.push({
+                        ...item,
+                        hospitals: matchingHospitals
+                    });
+                }
+            });
+
+            return { filteredProvinces, totalHospCount };
+        }
+
+        // วาดการ์ดแสดงผล
+        function renderCards() {
+            const container = document.getElementById('provinces-grid');
+            const noResults = document.getElementById('no-results');
+            const { filteredProvinces, totalHospCount } = getFilteredData();
+
+            document.getElementById('visible-count').textContent = totalHospCount;
+            document.getElementById('visible-provinces').textContent = filteredProvinces.length;
+
+            if (filteredProvinces.length === 0) {
+                container.innerHTML = '';
+                noResults.classList.remove('hidden');
+                return;
+            }
+
+            noResults.classList.add('hidden');
+
+            let html = '';
+            filteredProvinces.forEach(p => {
+                const okayInProvince = p.hospitals.filter(h => h.okay).length;
+                const totalInProvince = p.hospitals.length;
+
+                html += `
+                <div class="glass-card rounded-2xl border border-slate-200/90 shadow-xs hover:shadow-md transition-all duration-200 flex flex-col justify-between overflow-hidden">
+                    <div>
+                        <!-- Province Header with Controls -->
+                        <div class="px-5 py-3.5 bg-gradient-to-r from-slate-50 to-white border-b border-slate-100 flex items-center justify-between">
+                            <div class="flex items-center gap-2.5">
+                                <span class="w-8 h-8 rounded-lg bg-teal-100 text-teal-700 flex items-center justify-center font-bold text-xs">
+                                    ${p.province.substring(0, 2)}
+                                </span>
+                                <div>
+                                    <h3 class="font-bold text-slate-800 text-base leading-tight">${p.province}</h3>
+                                    <span class="text-[11px] text-slate-400 font-medium">ภาค${p.region || 'ทั่วไป'}</span>
+                                </div>
+                            </div>
+                            
+                            <!-- Province Actions -->
+                            <div class="flex items-center gap-1">
+                                <button onclick="openAddHospitalModal('${p.id}')" title="เพิ่มโรงพยาบาลในจังหวัด ${p.province}" class="w-7 h-7 rounded-lg bg-teal-50 hover:bg-teal-100 text-teal-700 flex items-center justify-center text-xs transition-colors">
+                                    <i class="fa-solid fa-plus"></i>
+                                </button>
+                                <button onclick="confirmDeleteProvince('${p.id}', '${p.province}')" title="ลบจังหวัด ${p.province}" class="w-7 h-7 rounded-lg hover:bg-rose-50 text-slate-400 hover:text-rose-600 flex items-center justify-center text-xs transition-colors">
+                                    <i class="fa-regular fa-trash-can"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Hospital Items List -->
+                        <div class="p-4 space-y-2.5">
+                            ${p.hospitals.length === 0 ? `
+                                <div class="text-center py-4 text-xs text-slate-400 italic">
+                                    ยังไม่มีโรงพยาบาลในจังหวัดนี้
+                                </div>
+                            ` : p.hospitals.map(h => {
+                                const hasPhone = h.contacts && h.contacts.length > 0;
+                                return `
+                                <div class="p-3 rounded-xl bg-slate-50/70 hover:bg-teal-50/40 border border-slate-100/90 transition-all">
+                                    <div class="flex items-start justify-between gap-2">
+                                        <div class="flex items-center gap-2 flex-wrap flex-1">
+                                            <span class="font-semibold text-slate-800 text-sm leading-snug">${h.name}</span>
+                                            
+                                            <!-- Green Check Icon for OK Status -->
+                                            ${h.okay ? `
+                                                <span title="ยืนยันความพร้อมเรียบร้อย" class="inline-flex items-center text-emerald-500 text-base">
+                                                    <i class="fa-solid fa-circle-check"></i>
+                                                </span>
+                                            ` : `
+                                                <span class="text-[10px] px-1.5 py-0.5 rounded bg-slate-200/70 text-slate-500 font-medium">
+                                                    รอดำเนินการ
+                                                </span>
+                                            `}
+                                        </div>
+
+                                        <!-- Edit Hospital Button -->
+                                        <button onclick="openEditHospitalModal('${p.id}', '${h.id}')" title="แก้ไขข้อมูลโรงพยาบาลนี้" class="w-7 h-7 rounded-lg bg-white hover:bg-teal-100 border border-slate-200 text-slate-500 hover:text-teal-700 flex items-center justify-center text-xs transition-all shadow-2xs shrink-0">
+                                            <i class="fa-solid fa-pen"></i>
+                                        </button>
+                                    </div>
+
+                                    <!-- Contacts Details -->
+                                    ${hasPhone ? `
+                                        <div class="mt-2 pt-2 border-t border-slate-200/50 flex flex-col gap-1.5">
+                                            ${h.contacts.map(ct => `
+                                                <div class="flex items-center justify-between text-xs bg-white px-2.5 py-1.5 rounded-lg border border-slate-100 shadow-2xs">
+                                                    <div class="flex items-center gap-1.5 text-slate-600 truncate mr-2">
+                                                        <i class="fa-regular fa-user text-slate-400 text-[11px]"></i>
+                                                        <span class="truncate font-medium">${ct.name || 'ผู้ประสานงาน'}</span>
+                                                    </div>
+                                                    <a href="tel:${ct.phone}" class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-teal-50 text-teal-700 hover:bg-teal-100 font-medium transition-colors shrink-0">
+                                                        <i class="fa-solid fa-phone text-[10px]"></i>
+                                                        <span>${ct.formatted || ct.phone}</span>
+                                                    </a>
+                                                </div>
+                                            `).join('')}
+                                        </div>
+                                    ` : ''}
+                                </div>
+                                `;
+                            }).join('')}
+                        </div>
+                    </div>
+
+                    <!-- Card Footer -->
+                    <div class="px-4 py-2.5 bg-slate-50 border-t border-slate-100 text-[11px] text-slate-500 flex items-center justify-between">
+                        <span>ยืนยันแล้ว: <strong class="text-emerald-600 font-semibold">${okayInProvince}/${totalInProvince}</strong></span>
+                        <button onclick="copyProvinceInfo('${p.id}')" class="text-slate-500 hover:text-teal-700 transition-colors font-medium flex items-center gap-1">
+                            <i class="fa-regular fa-copy text-[10px]"></i> คัดลอกจังหวัดนี้
+                        </button>
+                    </div>
+                </div>
+                `;
+            });
+
+            container.innerHTML = html;
+        }
+
+        // ==================== Modal Controls ==================== //
+
+        // 1. Edit Hospital Modal
+        function openEditHospitalModal(provId, hospId) {
+            const province = hospitalDataset.find(p => p.id === provId);
+            if (!province) return;
+            const hosp = province.hospitals.find(h => h.id === hospId);
+            if (!hosp) return;
+
+            document.getElementById('edit-prov-id').value = provId;
+            document.getElementById('edit-hosp-id').value = hospId;
+            document.getElementById('edit-province-subtitle').textContent = `จังหวัด: ${province.province}`;
+            document.getElementById('edit-hosp-name').value = hosp.name;
+            document.getElementById('edit-status-okay').checked = !!hosp.okay;
+
+            if (hosp.contacts && hosp.contacts.length > 0) {
+                document.getElementById('edit-contact-name').value = hosp.contacts[0].name || '';
+                document.getElementById('edit-contact-phone').value = hosp.contacts[0].formatted || hosp.contacts[0].phone || '';
+            } else {
+                document.getElementById('edit-contact-name').value = '';
+                document.getElementById('edit-contact-phone').value = '';
+            }
+
+            document.getElementById('edit-hospital-modal').classList.remove('hidden');
+        }
+
+        function closeEditHospitalModal() {
+            document.getElementById('edit-hospital-modal').classList.add('hidden');
+        }
+
+        function handleSaveEditHospital(e) {
+            e.preventDefault();
+            const provId = document.getElementById('edit-prov-id').value;
+            const hospId = document.getElementById('edit-hosp-id').value;
+            const rawName = document.getElementById('edit-hosp-name').value;
+            const isOkay = document.getElementById('edit-status-okay').checked;
+            const contactName = document.getElementById('edit-contact-name').value.trim();
+            const contactPhone = document.getElementById('edit-contact-phone').value.trim();
+
+            const province = hospitalDataset.find(p => p.id === provId);
+            if (!province) return;
+            const hosp = province.hospitals.find(h => h.id === hospId);
+            if (!hosp) return;
+
+            hosp.name = formatHospitalName(rawName);
+            hosp.okay = isOkay;
+
+            if (contactPhone || contactName) {
+                const cleanPhone = contactPhone.replace(/\s+/g, '');
+                hosp.contacts = [{
+                    phone: cleanPhone,
+                    formatted: contactPhone,
+                    name: contactName
+                }];
+            } else {
+                hosp.contacts = [];
+            }
+
+            persistDataset();
+            updateSummaryStats();
+            renderCards();
+            closeEditHospitalModal();
+            showToast(`บันทึกข้อมูล ${hosp.name} เรียบร้อยแล้ว`);
+        }
+
+        function handleDeleteCurrentHospital() {
+            const provId = document.getElementById('edit-prov-id').value;
+            const hospId = document.getElementById('edit-hosp-id').value;
+            const province = hospitalDataset.find(p => p.id === provId);
+            if (!province) return;
+            const hosp = province.hospitals.find(h => h.id === hospId);
+            if (!hosp) return;
+
+            openConfirmModal(
+                `ต้องการลบ "${hosp.name}"?`,
+                `ข้อมูลโรงพยาบาลนี้จะถูกลบออกจากจังหวัด ${province.province} อย่างถาวร`,
+                () => {
+                    province.hospitals = province.hospitals.filter(h => h.id !== hospId);
+                    persistDataset();
+                    updateSummaryStats();
+                    renderCards();
+                    closeEditHospitalModal();
+                    showToast(`ลบ ${hosp.name} เรียบร้อยแล้ว`);
+                }
+            );
+        }
+
+        // 2. Add Hospital Modal
+        function openAddHospitalModal(defaultProvId = null) {
+            const select = document.getElementById('add-hosp-province-select');
+            select.innerHTML = hospitalDataset.map(p => `
+                <option value="${p.id}" ${p.id === defaultProvId ? 'selected' : ''}>${p.province} (${p.region || 'ทั่วไป'})</option>
+            `).join('');
+
+            document.getElementById('add-hosp-name').value = '';
+            document.getElementById('add-contact-name').value = '';
+            document.getElementById('add-contact-phone').value = '';
+            document.getElementById('add-status-okay').checked = false;
+
+            document.getElementById('add-hospital-modal').classList.remove('hidden');
+        }
+
+        function closeAddHospitalModal() {
+            document.getElementById('add-hospital-modal').classList.add('hidden');
+        }
+
+        function handleSaveAddHospital(e) {
+            e.preventDefault();
+            const provId = document.getElementById('add-hosp-province-select').value;
+            const rawName = document.getElementById('add-hosp-name').value;
+            const isOkay = document.getElementById('add-status-okay').checked;
+            const contactName = document.getElementById('add-contact-name').value.trim();
+            const contactPhone = document.getElementById('add-contact-phone').value.trim();
+
+            const province = hospitalDataset.find(p => p.id === provId);
+            if (!province) {
+                showToast("ไม่พบจังหวัดที่เลือก", true);
+                return;
+            }
+
+            const newHosp = {
+                id: 'hosp-' + Date.now(),
+                name: formatHospitalName(rawName),
+                okay: isOkay,
+                contacts: []
+            };
+
+            if (contactPhone || contactName) {
+                newHosp.contacts.push({
+                    phone: contactPhone.replace(/\s+/g, ''),
+                    formatted: contactPhone,
+                    name: contactName
+                });
+            }
+
+            province.hospitals.push(newHosp);
+            persistDataset();
+            updateSummaryStats();
+            renderCards();
+            closeAddHospitalModal();
+            showToast(`เพิ่ม ${newHosp.name} สำเร็จ!`);
+        }
+
+        // 3. Add Province Modal
+        function openAddProvinceModal() {
+            document.getElementById('new-province-name').value = '';
+            document.getElementById('add-province-modal').classList.remove('hidden');
+        }
+
+        function closeAddProvinceModal() {
+            document.getElementById('add-province-modal').classList.add('hidden');
+        }
+
+        function handleSaveAddProvince(e) {
+            e.preventDefault();
+            const provName = document.getElementById('new-province-name').value.trim();
+            const region = document.getElementById('new-province-region').value;
+
+            if (!provName) return;
+
+            // ตรวจสอบชื่อจังหวัดซ้ำ
+            if (hospitalDataset.some(p => p.province.toLowerCase() === provName.toLowerCase())) {
+                showToast(`จังหวัด ${provName} มีอยู่ในระบบแล้ว`, true);
+                return;
+            }
+
+            const newProvince = {
+                id: 'prov-' + Date.now(),
+                province: provName,
+                region: region,
+                hospitals: []
+            };
+
+            hospitalDataset.push(newProvince);
+            persistDataset();
+            updateSummaryStats();
+            renderCards();
+            closeAddProvinceModal();
+            showToast(`เพิ่มจังหวัด ${provName} สำเร็จ!`);
+        }
+
+        // 4. Delete Province
+        function confirmDeleteProvince(provId, provName) {
+            const p = hospitalDataset.find(item => item.id === provId);
+            const count = p ? p.hospitals.length : 0;
+
+            openConfirmModal(
+                `ต้องการลบจังหวัด "${provName}"?`,
+                `จังหวัดนี้มีโรงพยาบาลอยู่ ${count} แห่ง ทั้งหมดจะถูกลบออกจากระบบ`,
+                () => {
+                    hospitalDataset = hospitalDataset.filter(item => item.id !== provId);
+                    persistDataset();
+                    updateSummaryStats();
+                    renderCards();
+                    showToast(`ลบจังหวัด ${provName} เรียบร้อยแล้ว`);
+                }
+            );
+        }
+
+        // 5. Reset to Default Dataset
+        function confirmResetData() {
+            openConfirmModal(
+                `ยืนยันการคืนค่าข้อมูลเริ่มต้น?`,
+                `การแก้ไขและการเพิ่มข้อมูลใหม่ทั้งหมดจะถูกแทนที่ด้วยข้อมูลตั้งต้น 21 จังหวัด`,
+                () => {
+                    hospitalDataset = JSON.parse(JSON.stringify(defaultHospitalDataset));
+                    persistDataset();
+                    updateSummaryStats();
+                    renderCards();
+                    showToast(`คืนค่าข้อมูลเริ่มต้นเรียบร้อยแล้ว`);
+                }
+            );
+        }
+
+        // Confirm Dialog Helper
+        let pendingConfirmAction = null;
+
+        function openConfirmModal(title, desc, onConfirm) {
+            document.getElementById('confirm-modal-title').textContent = title;
+            document.getElementById('confirm-modal-desc').textContent = desc;
+            pendingConfirmAction = onConfirm;
+
+            const actionBtn = document.getElementById('confirm-modal-action-btn');
+            actionBtn.onclick = () => {
+                if (pendingConfirmAction) pendingConfirmAction();
+                closeConfirmModal();
+            };
+
+            document.getElementById('confirm-modal').classList.remove('hidden');
+        }
+
+        function closeConfirmModal() {
+            document.getElementById('confirm-modal').classList.add('hidden');
+            pendingConfirmAction = null;
+        }
+
+        // เริ่มต้นการทำงานเมื่อโหลดหน้าเสร็จ
+        window.addEventListener('DOMContentLoaded', () => {
+            loadDataset();
+            updateSummaryStats();
+            renderCards();
+        });
+    </script>
+</body>
+</html>
